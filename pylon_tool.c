@@ -37,6 +37,7 @@
 #include <time.h>
 #include "pylon_tool.h"
 
+int g_oldProtocol = 0; // 是否为老协议标志
 // 输出Victron格式消息
 static void vic_print_message(const char *type, const char *format, ...) {
     char buffer[256]; // 定义缓冲区存储格式化后的字符串
@@ -125,6 +126,13 @@ static int can_transaction(CanHandle *h, PylontechCmdType cmd,
     }
     if (data) memcpy(frame.data, data, len);
     // printf("Sending CAN frame: ID=0x%X, DLC=0x%d\n", frame.can_id, frame.can_dlc);
+
+    // 清空接收缓存，避免读到旧数据
+    struct can_frame discard_frame;
+    fcntl(h->sockfd, F_SETFL, fcntl(h->sockfd, F_GETFL) | O_NONBLOCK);
+    while (read(h->sockfd, &discard_frame, sizeof(discard_frame)) > 0);
+    fcntl(h->sockfd, F_SETFL, fcntl(h->sockfd, F_GETFL) & ~O_NONBLOCK);
+
     // 发送请求
     if (write(h->sockfd, &frame, sizeof(frame)) != sizeof(frame)) {
         vic_print_message("error", "can write");
@@ -170,7 +178,11 @@ static int can_transaction(CanHandle *h, PylontechCmdType cmd,
             recv_frame.can_id &= CAN_EFF_MASK;
         }
         // printf("Received CAN frame: ID=0x%X, EXPID=%X\n", recv_frame.can_id, expected_id);
-        if (recv_frame.can_id == expected_id) {
+        if (recv_frame.can_id == expected_id || recv_frame.can_id == resp_type) {
+            if(recv_frame.can_id == resp_type)
+            {
+                g_oldProtocol = 1; // 收到老协议响应
+            }
             if (resp_data) memcpy(resp_data, recv_frame.data, recv_frame.can_dlc);
             return recv_frame.can_dlc;
         }
@@ -389,6 +401,10 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
             // 发送块序号 (1-based)
             uint16_t block_num = htons(i + 1);
             can_transaction(h, PY_CMD_BLOCK_NUMBER, &block_num, 2, PY_RESP_NONE, response, PY_TIMEOUT_MS);
+            if(g_oldProtocol)
+            {
+                usleep(40 * 1000);
+            }
 
             // 发送块数据
             for (int offset_data = 0; offset_data < block_len; offset_data += 8) {
