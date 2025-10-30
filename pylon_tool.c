@@ -436,7 +436,7 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
             }
 
             if (response[0] != PY_STATUS_BLOCK_OK) {
-                vic_print_message("warning", "Block transfer failed at block %d, ErrID:0x%02X", i + 1, response[0]);
+                // vic_print_message("warning", "Block transfer failed at block %d, ErrID:0x%02X", i + 1, response[0]);
                 continue;
             }
 
@@ -574,6 +574,62 @@ static void print_usage(const char *prog_name) {
 }
 
 /* ==================== 主程序 ==================== */
+char** get_available_can_interfaces() {
+    FILE *fp;
+    char line[256];
+    char **interfaces = NULL;
+    int count = 0;
+    int capacity = 10;
+
+    // 使用ip命令获取CAN接口
+    fp = popen("ip link show 2>/dev/null | grep -o 'can[0-9]\\+' | sort -u", "r");
+    if (!fp) {
+        return NULL;
+    }
+
+    // 分配初始内存
+    interfaces = malloc(capacity * sizeof(char*));
+    if (!interfaces) {
+        pclose(fp);
+        return NULL;
+    }
+
+    // 读取所有CAN接口
+    while (fgets(line, sizeof(line), fp)) {
+        // 去除换行符
+        line[strcspn(line, "\n")] = 0;
+        
+        // 检查是否需要扩容
+        if (count >= capacity - 1) {
+            capacity *= 2;
+            char **new_interfaces = realloc(interfaces, capacity * sizeof(char*));
+            if (!new_interfaces) {
+                break;
+            }
+            interfaces = new_interfaces;
+        }
+        
+        interfaces[count] = strdup(line);
+        if (interfaces[count]) {
+            count++;
+        }
+    }
+
+    pclose(fp);
+    interfaces[count] = NULL; // NULL结尾
+    
+    return interfaces;
+}
+
+void free_can_interfaces(char **interfaces) {
+    if (interfaces) {
+        for (int i = 0; interfaces[i] != NULL; i++) {
+            free(interfaces[i]);
+        }
+        free(interfaces);
+    }
+}
+
 int main(int argc, char **argv) {
     uint8_t node_id = PY_NODE_ID_DEFAULT;
     const char *can_if = NULL;
@@ -614,25 +670,37 @@ int main(int argc, char **argv) {
         ret = process_single_interface(can_if, node_id, list_mode, update_mode, fw_file);
     } else {
         // 自动扫描所有可用CAN接口
-        // vic_print_message("normal", "No CAN interface specified, scanning all available interfaces...");
+        vic_print_message("normal", "Scanning all available interfaces...");
         
-        // 获取系统所有CAN接口 (示例实现)
-        char *can_interfaces[] = {"can0", "can1", NULL}; // 应替换为实际扫描逻辑
+        char **can_interfaces = get_available_can_interfaces();
         bool found_device = false;
         
-        for (int i = 0; can_interfaces[i] != NULL; i++) {
-            // vic_print_message("normal", "Checking interface %s...", can_interfaces[i]);
-            ret = process_single_interface(can_interfaces[i], node_id, list_mode, update_mode, fw_file);
-            if (ret == 0) {
-                found_device = true;
-                // 如果是列表模式，继续扫描其他接口
-                if (!list_mode) break; // 更新模式找到第一个可用接口即可
-            }
-        }
-        
-        if (!found_device) {
-            // vic_print_message("error", "No valid devices found on any CAN interface");
+        if (can_interfaces == NULL || can_interfaces[0] == NULL) {
+            vic_print_message("error", "No CAN interfaces found on this system");
             ret = PYLON_ERROR_NO_DEVICE;
+        } else {
+            // 显示找到的接口
+            for (int i = 0; can_interfaces[i] != NULL; i++) {
+                vic_print_message("normal", "Found CAN interface: %s", can_interfaces[i]);
+            }
+            
+            // 尝试每个接口
+            for (int i = 0; can_interfaces[i] != NULL; i++) {
+                vic_print_message("normal", "Checking interface %s...", can_interfaces[i]);
+                ret = process_single_interface(can_interfaces[i], node_id, list_mode, update_mode, fw_file);
+                if (ret == 0) {
+                    found_device = true;
+                    // 如果是列表模式，继续扫描其他接口
+                    if (!list_mode) break; // 更新模式找到第一个可用接口即可
+                }
+            }
+            
+            if (!found_device) {
+                vic_print_message("error", "No valid devices found on any CAN interface");
+                ret = PYLON_ERROR_NO_DEVICE;
+            }
+            
+            free_can_interfaces(can_interfaces);
         }
     }
 
