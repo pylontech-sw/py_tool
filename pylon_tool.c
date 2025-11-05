@@ -581,8 +581,8 @@ char** get_available_can_interfaces() {
     int count = 0;
     int capacity = 10;
 
-    // 使用ip命令获取CAN接口
-    fp = popen("ip link show 2>/dev/null | grep -o 'can[0-9]\\+' | sort -u", "r");
+    // 修改：同时匹配 can 和 vecan 接口
+    fp = popen("ip link show 2>/dev/null | grep -oE '(can|vecan)[0-9]+' | sort -u", "r");
     if (!fp) {
         return NULL;
     }
