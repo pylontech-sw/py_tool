@@ -559,7 +559,7 @@ static int process_single_interface(const char *can_if, uint8_t node_id,
     }
 
     close(can.sockfd);
-    return ret;
+    return 0;
 }
 
 /* 打印用法信息 */
