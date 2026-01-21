@@ -133,21 +133,17 @@ typedef enum {
 // 错误码定义
 typedef enum {
     PYLON_SUCCESS = 0,                  // 成功
-    PYLON_ERROR_GENERAL = -1,           // 通用错误
-    PYLON_ERROR_CAN_INIT = -2,          // CAN初始化失败
-    PYLON_ERROR_CAN_IO = -3,            // CAN通信错误
-    PYLON_ERROR_TIMEOUT = -4,           // 超时错误
-    PYLON_ERROR_FIRMWARE = -5,          // 固件相关错误
-    PYLON_ERROR_PARAM = -6,             // 参数错误
-    PYLON_ERROR_NO_DEVICE = -7,         // 未找到设备
-    PYLON_ERROR_MEMORY = -8,            // 内存错误
-    PYLON_ERROR_FILE = -9,              // 文件错误
-    PYLON_ERROR_CHECK_FAILED = -10,     // 升级检查失败
-    PYLON_ERROR_CHECK_TIMEOUT = -11,    // 升级检查超时
-    PYLON_ERROR_STEP1_FAILED = -12,     // 升级步骤1失败
-    PYLON_ERROR_STEP2_FAILED = -13,     // 升级步骤2失败
-    PYLON_ERROR_STEP3_FAILED = -14,     // 升级步骤3失败
-    PYLON_ERROR_STEP4_FAILED = -15,     // 升级步骤4失败
+    PYLON_ERROR_GENERAL = 1,            // 通用错误
+    PYLON_ERROR_CAN_INIT = 2,           // CAN初始化失败
+    PYLON_ERROR_CAN_IO = 3,             // CAN通信错误
+    PYLON_ERROR_TIMEOUT = 4,            // 超时错误
+    PYLON_ERROR_FIRMWARE = 5,           // 固件相关错误
+    PYLON_ERROR_PARAM = 6,              // 参数错误
+    PYLON_ERROR_NO_DEVICE = 7,          // 未找到设备
+    PYLON_ERROR_MEMORY = 8,             // 内存错误
+    PYLON_ERROR_FILE = 9,               // 文件错误
+    PYLON_ERROR_CHECK_FAILED = 10,      // 升级检查失败
+    PYLON_ERROR_CHECK_TIMEOUT = 11,     // 升级检查超时
 } PylonErrorCode;
 
 typedef struct {

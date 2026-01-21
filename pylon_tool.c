@@ -363,29 +363,34 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
     uint8_t response[8] = {0};
     
     int result = -1;
+    int retCode = PYLON_SUCCESS;
     for(int try=0; try<PY_TRY_TIMES; try++) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_FIRMWARE_SIZE, &fw_size_be, 4,
                         PY_RESP_FIRMWARE_SIZE, response, PY_TIMEOUT_MS) < 0) {
+            retCode = PYLON_ERROR_TIMEOUT;
             continue;
         }
 
         if (response[0] != PY_STATUS_SIZE_OK) {
+            retCode = PYLON_ERROR_FIRMWARE;
             vic_print_message("error", "Firmware size rejected ErrID:0x%02X", response[0]);
             continue;
         }
 
         if(((response[1] << 8) + response[2]) != PY_BLOCK_SIZE) {
+            retCode = PYLON_ERROR_FILE;
             vic_print_message("error", "Block size mismatch ErrSize");
             continue;
         }
+        retCode = PYLON_SUCCESS;
         result = 0;
         break;
     }
     if(result < 0) {
         vic_print_message("error", "Failed to send firmware size after 3 attempts");
         free(fw_data);
-        return PYLON_ERROR_STEP1_FAILED;
+        return retCode;
     }
 
     // 2. 分块传输
@@ -431,23 +436,26 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
             memset(response, 0, sizeof(response));
             if (can_transaction(h, PY_CMD_BLOCK_CRC, send_data, sizeof(send_data),
                             PY_RESP_BLOCK_STATUS, response, PY_TIMEOUT_MS) < 0) {
+                retCode = PYLON_ERROR_TIMEOUT;
                 vic_print_message("warning", "error can_transaction");
                 continue;
             }
 
             if (response[0] != PY_STATUS_BLOCK_OK) {
+                retCode = PYLON_ERROR_FILE;
                 // vic_print_message("warning", "Block transfer failed at block %d, ErrID:0x%02X", i + 1, response[0]);
                 continue;
             }
 
             vic_print_progress((i+1)*100/total_blocks);
+            retCode = PYLON_SUCCESS;
             result = 0;
             break;
         }
         if(result < 0) {
             vic_print_message("error", "Failed to transfer block %d after %d attempts", i + 1, PY_TRY_TIMES);
             free(fw_data);
-            return PYLON_ERROR_STEP2_FAILED;
+            return retCode;
         }
     }
 
@@ -459,20 +467,23 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_FIRMWARE_CRC, &fw_crc, 2,
                         PY_RESP_FIRMWARE_CRC, response, PY_TIMEOUT_MS) < 0) {
+            retCode = PYLON_ERROR_TIMEOUT;
             continue;
         }
 
         if (response[0] != PY_STATUS_CRC_OK) {
+            retCode = PYLON_ERROR_FILE;
             vic_print_message("error", "Firmware CRC mismatch ErrID:0x%02X", response[0]);
             continue;
         }
+        retCode = PYLON_SUCCESS;
         result = 0;
         break;
     }
     if(result < 0) {
         vic_print_message("error", "Failed to verify firmware CRC after 3 attempts");
         free(fw_data);
-        return PYLON_ERROR_STEP3_FAILED;
+        return retCode;
     }
 
     // 4. 重启升级
@@ -484,20 +495,23 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_RESTART, data, sizeof(data),
                         PY_RESP_RESTART, response, PY_TIMEOUT_MS) < 0) {
+            retCode = PYLON_ERROR_TIMEOUT;
             continue;
         }
 
         if (response[0] != PY_RESTART_CFM_UPGRADE && response[0] != PY_RESTART_CFM_TRANS) {
+            retCode = PYLON_ERROR_FILE;
             vic_print_message("error", "Restart rejected ErrID:0x%02X", response[0]);
             continue;
         }
+        retCode = PYLON_SUCCESS;
         result = 0;
         break;
     }
     if(result < 0) {
         vic_print_message("error", "Failed to restart device after 3 attempts");
         free(fw_data);
-        return PYLON_ERROR_STEP4_FAILED;
+        return retCode;
     }
 
     // 5. 检查升级状态
@@ -559,7 +573,7 @@ static int process_single_interface(const char *can_if, uint8_t node_id,
     }
 
     close(can.sockfd);
-    return 0;
+    return ret;
 }
 
 /* 打印用法信息 */
