@@ -184,7 +184,7 @@ static int can_transaction(CanHandle *h, PylontechCmdType cmd,
                 g_oldProtocol = 1; // 收到老协议响应
             }
             if (resp_data) memcpy(resp_data, recv_frame.data, recv_frame.can_dlc);
-            return recv_frame.can_dlc;
+            return PYLON_SUCCESS;
         }
     }
 
@@ -367,7 +367,7 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
     for(int try=0; try<PY_TRY_TIMES; try++) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_FIRMWARE_SIZE, &fw_size_be, 4,
-                        PY_RESP_FIRMWARE_SIZE, response, PY_TIMEOUT_MS) < 0) {
+                        PY_RESP_FIRMWARE_SIZE, response, PY_TIMEOUT_MS) != 0) {
             retCode = PYLON_ERROR_TIMEOUT;
             continue;
         }
@@ -435,7 +435,7 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
             // 发送 4 字节数据（CRC + block_len）
             memset(response, 0, sizeof(response));
             if (can_transaction(h, PY_CMD_BLOCK_CRC, send_data, sizeof(send_data),
-                            PY_RESP_BLOCK_STATUS, response, PY_TIMEOUT_MS) < 0) {
+                            PY_RESP_BLOCK_STATUS, response, PY_TIMEOUT_MS) != 0) {
                 retCode = PYLON_ERROR_TIMEOUT;
                 vic_print_message("warning", "error can_transaction");
                 continue;
@@ -466,7 +466,7 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
     for(int try=0; try<PY_TRY_TIMES; try++) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_FIRMWARE_CRC, &fw_crc, 2,
-                        PY_RESP_FIRMWARE_CRC, response, PY_TIMEOUT_MS) < 0) {
+                        PY_RESP_FIRMWARE_CRC, response, PY_TIMEOUT_MS) != 0) {
             retCode = PYLON_ERROR_TIMEOUT;
             continue;
         }
@@ -494,7 +494,7 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
     for(int try=0; try<PY_TRY_TIMES; try++) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_RESTART, data, sizeof(data),
-                        PY_RESP_RESTART, response, PY_TIMEOUT_MS) < 0) {
+                        PY_RESP_RESTART, response, PY_TIMEOUT_MS) != 0) {
             retCode = PYLON_ERROR_TIMEOUT;
             continue;
         }
@@ -520,7 +520,7 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
     while (retries--) {
         memset(response, 0, sizeof(response));
         if (can_transaction(h, PY_CMD_CHECK_STATUS, data, 1,
-                          PY_RESP_STATUS, response, PY_TIMEOUT_MS) < 0) {
+                          PY_RESP_STATUS, response, PY_TIMEOUT_MS) != 0) {
             sleep(2);
             continue;
         }
@@ -530,7 +530,9 @@ static int pylon_can_update(CanHandle *h, const char *fw_path) {
             vic_print_message("success", "Upgrade completed");
             free(fw_data);
             return PYLON_SUCCESS;
-        } else if (response[0] == PY_UPGRADE_FAILED) {
+        } else if (response[0] == PY_UPGRADE_FAILED || response[0] == PY_UPGRADE_TRANS_ERROR ||
+                response[0] == PY_UPGRADE_CANNOT_UP || response[0] == PY_UPGRADE_VER_MISMATCH ||
+                response[0] == PY_UPGRADE_CMD_MISMATCH ) {
             vic_print_message("error", "Upgrade failed ErrID:0x%02X", response[0]);
             free(fw_data);
             return PYLON_ERROR_CHECK_FAILED;

@@ -18,7 +18,7 @@
 #ifndef __PYLON_TOOL_H__
 #define __PYLON_TOOL_H__
 
-#define PY_APP_VER              v1.0
+#define PY_APP_VER              v1.1
 #define PY_PRODUCT_ID           0xB009   // 产品ID
 #define PY_BLOCK_SIZE           128      // 固定分块大小
 #define PY_TIMEOUT_MS           3000     // 默认超时3秒
@@ -129,6 +129,7 @@ typedef enum {
     PY_UPGRADE_UPGRADING     = 0x10,
     PY_UPGRADE_CANNOT_UP     = 0x11,
     PY_UPGRADE_VER_MISMATCH  = 0x12,
+    PY_UPGRADE_CMD_MISMATCH  = 0x13,
 } PylontechStatusCode;
 
 // 错误码定义
