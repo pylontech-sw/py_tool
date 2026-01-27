@@ -691,7 +691,7 @@ int main(int argc, char **argv) {
         
         if (can_interfaces == NULL || can_interfaces[0] == NULL) {
             // vic_print_message("error", "No CAN interfaces found on this system");
-            ret = PYLON_ERROR_NO_DEVICE;
+            ret = PYLON_SUCCESS;
         } else {
             // 显示找到的接口
             // for (int i = 0; can_interfaces[i] != NULL; i++) {
@@ -711,12 +711,11 @@ int main(int argc, char **argv) {
             
             if (!found_device) {
                 // vic_print_message("error", "No valid devices found on any CAN interface");
-                ret = PYLON_ERROR_NO_DEVICE;
+                ret = PYLON_SUCCESS;
             }
             
             free_can_interfaces(can_interfaces);
         }
     }
-
     return ret;
 }
