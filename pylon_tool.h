@@ -18,7 +18,7 @@
 #ifndef __PYLON_TOOL_H__
 #define __PYLON_TOOL_H__
 
-#define PY_APP_VER              v1.1
+#define PY_APP_VER              v1.2
 #define PY_PRODUCT_ID           0xB009   // 产品ID
 #define PY_BLOCK_SIZE           128      // 固定分块大小
 #define PY_TIMEOUT_MS           3000     // 默认超时3秒
