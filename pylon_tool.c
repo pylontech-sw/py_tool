@@ -715,7 +715,14 @@ int main(int argc, char **argv) {
                 // vic_print_message("error", "No valid devices found on any CAN interface");
                 ret = PYLON_SUCCESS;
             }
-            
+
+            // When multiple interfaces are scanned and a device is found do report that as successful.
+            // Otherwise the state of the last interface will be returned and that might be
+            // PYLON_ERROR_NO_DEVICE when the device is connected to another interface.
+
+            if (list_mode && found_device)
+                ret = PYLON_SUCCESS;
+
             free_can_interfaces(can_interfaces);
         }
     }
